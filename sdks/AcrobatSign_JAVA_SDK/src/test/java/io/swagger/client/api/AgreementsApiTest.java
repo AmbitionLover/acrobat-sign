@@ -28,45 +28,25 @@
 
 package io.swagger.client.api;
 
+import io.swagger.client.model.ApiClient;
 import io.swagger.client.model.ApiException;
-import io.swagger.client.model.agreements.AgreementCreationInfo;
-import io.swagger.client.model.agreements.AgreementCreationResponse;
-import io.swagger.client.model.agreements.AgreementDocumentImageUrlsInfo;
-import io.swagger.client.model.agreements.AgreementDocuments;
-import io.swagger.client.model.agreements.AgreementEventList;
-import io.swagger.client.model.agreements.AgreementFormFields;
-import io.swagger.client.model.agreements.AgreementInfo;
-import io.swagger.client.model.agreements.AgreementRejectionInfo;
-import io.swagger.client.model.agreements.AgreementStateInfo;
-import io.swagger.client.model.agreements.AgreementViewInfo;
-import io.swagger.client.model.agreements.AgreementViews;
-import io.swagger.client.model.agreements.CombinedDocumentPagesInfo;
-import io.swagger.client.model.agreements.DelegatedParticipantSetInfo;
-import io.swagger.client.model.agreements.DelegationResponse;
-import io.swagger.client.model.agreements.DetailedParticipantSetInfo;
-import io.swagger.client.model.agreements.DocumentUrl;
-import io.swagger.client.model.agreements.DocumentsImageUrlsInfo;
-import io.swagger.client.model.agreements.FormFieldMergeInfo;
-import io.swagger.client.model.agreements.FormFieldPostInfo;
-import io.swagger.client.model.agreements.FormFieldPutInfo;
-import io.swagger.client.model.agreements.MembersInfo;
-import io.swagger.client.model.agreements.Note;
-import io.swagger.client.model.agreements.ParticipantSecurityOption;
-import io.swagger.client.model.agreements.ReminderCreationResult;
-import io.swagger.client.model.agreements.ReminderInfo;
-import io.swagger.client.model.agreements.RemindersResponse;
-import io.swagger.client.model.agreements.ShareCreationInfoList;
-import io.swagger.client.model.agreements.ShareCreationResponseList;
-import io.swagger.client.model.agreements.SigningUrlResponse;
-import io.swagger.client.model.agreements.UserAgreements;
-import io.swagger.client.model.agreements.VisibilityInfo;
+import io.swagger.client.model.ApiResponse;
+import io.swagger.client.model.Configuration;
+import io.swagger.client.model.agreements.*;
+import io.swagger.client.model.baseUris.BaseUriInfo;
+import io.swagger.client.model.libraryDocuments.LibraryDocumentCreationInfoV6;
+import io.swagger.client.model.libraryDocuments.LibraryDocumentCreationResponse;
+import io.swagger.client.model.transientDocuments.TransientDocumentResponse;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.Ignore;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * API tests for AgreementsApi
@@ -75,6 +55,248 @@ import java.util.Map;
 public class AgreementsApiTest {
 
     private final AgreementsApi api = new AgreementsApi();
+
+    public final static String baseUrl = "https://api.na4.adobesign.com:443/";
+    public final static String endpointUrl = "api/rest/v6";
+
+    String mimeType = "application/pdf";
+
+    public String elag(ApiResponse<?> apiResponse) {
+        Map<String, List<String>> headers = apiResponse.getHeaders();
+        List<String> strings = headers.get("ETag");
+        return strings.get(0);
+    }
+
+    @Before
+    public void init() throws ApiException {
+        ApiClient apiClient = new ApiClient();
+        apiClient.setBasePath(baseUrl + endpointUrl);
+        Configuration.setDefaultApiClient(apiClient);
+//        BaseUrisApi baseUrisApi = new BaseUrisApi();
+//        BaseUriInfo baseUriInfo = baseUrisApi.getBaseUris(authorization());
+//        apiClient.setBasePath(baseUriInfo.getApiAccessPoint() + endpointUrl);
+        api.setApiClient(apiClient);
+    }
+
+    public String authorization() {
+        return "Bearer 3AAABLblqZhATbP6UCE7nhcSbYFrMr3qDIgOPWn1JVzyOhCurpwFrN3PkfjKbqdYNBA0GI7-PH1IvOAxbCZOeO2JurGJkBV_e";
+    }
+
+
+    @Test
+    public void qysTest() throws Exception{
+        // 创建合同
+        AgreementCreationInfo creationInfo = new AgreementCreationInfo();
+
+        // 指定签署方
+        addSigner(creationInfo);
+
+        // 上传签署文件
+        addFile(creationInfo);
+
+        // 指定签署位置
+//        addRect(creationInfo);
+
+        // 创建协议
+        String id = createAgreement(creationInfo);
+
+        // 发起草稿
+        updateAgreementStata(id);
+
+        // 添加签署位置
+//        putFormField(id);
+
+        // 查看签署位置
+        getFormFields(id);
+
+        // 发起草稿
+//        updateAgreementStata(id);
+
+
+    }
+
+    private void getFormFields(String id) throws ApiException {
+        AgreementFormFields formFields = api.getFormFields(authorization(), id, null, null, null, null);
+        System.out.println(formFields);
+    }
+
+    private void putFormField(String id) throws Exception{
+        // 获取签署位置
+        // aodbe 反应不过来
+        Thread.sleep(3000);
+
+
+        ApiResponse<AgreementFormFields> formFieldsWithHttpInfo = api.getFormFieldsWithHttpInfo(authorization(), id, null, null, null, null);
+
+        String elag = elag(formFieldsWithHttpInfo);
+
+        System.out.println(formFieldsWithHttpInfo.getData());
+
+        // 获取 成员信息
+        MembersInfo allMembers = api.getAllMembers(authorization(), id, null, null, null, null);
+
+        Map<String, String> parSetIds = allMembers.getParticipantSets().stream().collect(
+                Collectors.toMap(DetailedParticipantSetInfo::getName
+                        , DetailedParticipantSetInfo::getId));
+
+        FormFieldPutInfo formFieldPutInfo =new FormFieldPutInfo();
+        for (int i = 0; i < 2; i++) {
+            String name = String.valueOf(i + 1);
+            String memberName = "tag"+name;
+            FormField formField = new FormField();
+            formField.setAlignment(FormField.AlignmentEnum.CENTER);
+            formField.setContentType(FormField.ContentTypeEnum.SIGNATURE_BLOCK);
+            formField.setInputType(FormField.InputTypeEnum.SIGNATURE);
+            formField.setFontSize(10D);
+            formField.setName(name);
+            formField.assignee(parSetIds.get(memberName));
+            formField.required(true);
+            formField.setMaxLength(80);
+            formField.setOrigin(FormField.OriginEnum.GENERATED);
+
+            FormFieldLocation formFieldLocation = new FormFieldLocation();
+            formFieldLocation.setHeight(80D);
+            formFieldLocation.setWidth(40D);
+            formFieldLocation.setTop(200d);
+            formFieldLocation.setLeft(200d);
+            formFieldLocation.setPageNumber(i + 1);
+
+            formField.addLocationsItem(formFieldLocation);
+
+            formFieldPutInfo.addFieldsItem(formField);
+        }
+        api.updateFormFields(authorization(), elag, id, formFieldPutInfo, null, null);
+
+    }
+
+    private void updateAgreementStata(String id) throws ApiException {
+        // 获取 Etag
+        ApiResponse<AgreementInfo> httpInfo = api.getAgreementInfoWithHttpInfo(authorization(), id, null, null, null);
+        String elag = elag(httpInfo);
+
+        AgreementInfo.StatusEnum status = httpInfo.getData().getStatus();
+
+        AgreementStateInfo stateInfo = new AgreementStateInfo();
+//        if (state == AgreementInfo.StateEnum.AUTHORING){
+//            stateInfo.setState(AgreementStateInfo.StateEnum.IN_PROCESS);
+//        } else {
+//        }
+        stateInfo.setState(AgreementStateInfo.StateEnum.AUTHORING);
+
+        api.updateAgreementState(authorization(), elag, id, stateInfo, null ,null);
+
+
+    }
+
+    private String createAgreement(AgreementCreationInfo agreementInfo) throws ApiException {
+
+
+        String contractId = UUID.randomUUID().toString();
+        agreementInfo.setName("qiyuesuo test adobe");
+        agreementInfo.setSignatureType(AgreementCreationInfo.SignatureTypeEnum.ESIGN);
+        agreementInfo.setState(AgreementCreationInfo.StateEnum.DRAFT);
+        agreementInfo.createdDate(new Date());
+        agreementInfo.setExternalId(new ExternalId().id(contractId));
+        agreementInfo.setId(contractId);
+        agreementInfo.emailOption(
+                new EmailOption().sendOptions(
+                        new SendOptions().initEmails(
+                                SendOptions.InitEmailsEnum.NONE)));
+        AgreementCreationResponse agreementCreationResponse = api
+                .createAgreement(authorization(), agreementInfo, null, null);
+        String id = agreementCreationResponse.getId();
+        System.out.println(id);
+        return id;
+    }
+
+    private void addRect(AgreementCreationInfo creationInfo) {
+
+        FormFieldGenerator formFieldGenerator = new FormFieldGenerator();
+
+        FormFieldPutInfo formFieldPutInfo = new FormFieldPutInfo();
+
+        for (int i = 0; i < 2; i++) {
+            String name = String.valueOf(i + 1);
+            FormField formField = new FormField();
+            formField.setAlignment(FormField.AlignmentEnum.CENTER);
+//                formField.setContentType(FormField.ContentTypeEnum.SIGNATURE);
+            formField.setName(name);
+            formField.assignee("tag"+name);
+
+            FormFieldLocation formFieldLocation = new FormFieldLocation();
+            formFieldLocation.setHeight(800D);
+            formFieldLocation.setWidth(200D);
+            formFieldLocation.setTop(1d);
+            formFieldLocation.setLeft(1d);
+            formFieldLocation.setPageNumber(i + 1);
+
+            formField.addLocationsItem(formFieldLocation);
+
+            formFieldGenerator.addFormFieldDescription(formField);
+        }
+
+
+        creationInfo.setFormFieldGenerator(formFieldGenerator);
+
+    }
+
+    private void addFile(AgreementCreationInfo creationInfo) throws ApiException {
+        TransientDocumentsApi transientDocumentsApi = new TransientDocumentsApi();
+
+        File file = new File("F:\\word\\qiyuesuo\\空白.pdf");
+
+        TransientDocumentResponse transientDocument = transientDocumentsApi.createTransientDocument(authorization(), file,
+                null, null, "", mimeType);
+
+        String transientDocumentId = transientDocument.getTransientDocumentId();
+
+        LibraryDocumentsApi libraryDocumentsApi = new LibraryDocumentsApi();
+
+        LibraryDocumentCreationInfoV6 libraryDocumentCreationInfoV6 = new LibraryDocumentCreationInfoV6();
+
+        io.swagger.client.model.libraryDocuments.FileInfo fileInfo = new io.swagger.client.model.libraryDocuments.FileInfo();
+
+        fileInfo.setTransientDocumentId(transientDocumentId);
+
+        libraryDocumentCreationInfoV6.addFileInfosItem(fileInfo);
+        libraryDocumentCreationInfoV6.setName("qys");
+        libraryDocumentCreationInfoV6.addTemplateTypesItem(LibraryDocumentCreationInfoV6.TemplateTypesEnum.DOCUMENT);
+        libraryDocumentCreationInfoV6.setState(LibraryDocumentCreationInfoV6.StateEnum.ACTIVE);
+        libraryDocumentCreationInfoV6.setSharingMode(LibraryDocumentCreationInfoV6.SharingModeEnum.USER);
+
+        LibraryDocumentCreationResponse libraryDocument = libraryDocumentsApi.createLibraryDocument(authorization(), libraryDocumentCreationInfoV6, null, null);
+
+        System.out.println("libraryDocument:" + libraryDocument.getId());
+
+        // 添加签署位置
+        addlibraryDocumentFormField();
+
+        FileInfo fileInfo1 = new FileInfo();
+
+        fileInfo1.setLibraryDocumentId(libraryDocument.getId());
+
+        creationInfo.addFileInfosItem(fileInfo1);
+    }
+
+    private void addSigner(AgreementCreationInfo creationInfo){
+
+        List<String> email = new ArrayList<>();
+        email.add("1");
+        email.add("1277518148@qq.com");
+        email.add("1735873875@qq.com");
+
+        for (int i = 1; i <= 2; i++) {
+            ParticipantSetInfo participantSetInfo = new ParticipantSetInfo();
+            ParticipantSetMemberInfo participantSetMemberInfo = new ParticipantSetMemberInfo();
+            participantSetMemberInfo.setEmail(email.get(i));
+            participantSetInfo.setName("tag"+String.valueOf(i));
+            participantSetInfo.setLabel("label"+String.valueOf(i));
+            participantSetInfo.addMemberInfosItem(participantSetMemberInfo);
+            participantSetInfo.setOrder(i);
+            participantSetInfo.setRole(ParticipantSetInfo.RoleEnum.SIGNER);
+            creationInfo.addParticipantSetsInfoItem(participantSetInfo);
+        }
+    }
 
     
     /**
@@ -87,12 +309,29 @@ public class AgreementsApiTest {
      */
     @Test
     public void addTemplateFieldsToAgreementTest() throws ApiException {
-        String authorization = null;
+        String authorization = "3AAABLblqZhATbP6UCE7nhcSbYFrMr3qDIgOPWn1JVzyOhCurpwFrN3PkfjKbqdYNBA0GI7-PH1IvOAxbCZOeO2JurGJkBV_e";
         String ifMatch = null;
         String agreementId = null;
         FormFieldPostInfo formFieldPostInfo = null;
         String xApiUser = null;
         String xOnBehalfOfUser = null;
+
+        ApiClient apiClient = new ApiClient();
+
+//        //Default baseUrl to make GET /baseUris API call.
+//        String baseUrl = "https://api.echosign.com/";
+//        String endpointUrl = "/api/rest/v6";
+//        apiClient.setBasePath(baseUrl + endpointUrl);
+//
+//        //TODO : Provide an OAuth Access Token as "Bearer : access token" in authorization
+//        String authorization = "authorization_example";
+//
+//        //Get the baseUris for the user and set it in apiClient.
+//        BaseUrisApi baseUrisApi = new BaseUrisApi(apiClient);
+//        BaseUriInfo baseUriInfo = baseUrisApi.getBaseUris(authorization);
+//        apiClient.setBasePath(baseUriInfo.getApiAccessPoint() + endpointUrl);
+//        api.setApiClient(apiClient);
+
         AgreementFormFields response = api.addTemplateFieldsToAgreement(authorization, ifMatch, agreementId, formFieldPostInfo, xApiUser, xOnBehalfOfUser);
 
         // TODO: test validations
@@ -108,7 +347,7 @@ public class AgreementsApiTest {
      */
     @Test
     public void createAgreementTest() throws ApiException {
-        String authorization = null;
+        String authorization = "3AAABLblqZhATbP6UCE7nhcSbYFrMr3qDIgOPWn1JVzyOhCurpwFrN3PkfjKbqdYNBA0GI7-PH1IvOAxbCZOeO2JurGJkBV_e";
         AgreementCreationInfo agreementInfo = null;
         String xApiUser = null;
         String xOnBehalfOfUser = null;
@@ -227,13 +466,16 @@ public class AgreementsApiTest {
      */
     @Test
     public void getAgreementInfoTest() throws ApiException {
-        String authorization = null;
-        String agreementId = null;
+        String authorization = authorization();
+        String agreementId = "CBJCHBCAABAA28fNen6SIGnysnm2IV_SpO18n_7rGOZE";
         String xApiUser = null;
         String xOnBehalfOfUser = null;
         String ifNoneMatch = null;
         AgreementInfo response = api.getAgreementInfo(authorization, agreementId, xApiUser, xOnBehalfOfUser, ifNoneMatch);
+        ApiResponse<AgreementInfo> agreementInfoWithHttpInfo = api.getAgreementInfoWithHttpInfo(authorization, agreementId, xApiUser, xOnBehalfOfUser, ifNoneMatch);
 
+        Map<String, List<String>> headers = agreementInfoWithHttpInfo.getHeaders();
+        System.out.println(response);
         // TODO: test validations
     }
     
@@ -396,14 +638,15 @@ public class AgreementsApiTest {
      */
     @Test
     public void getAllMembersTest() throws ApiException {
-        String authorization = null;
-        String agreementId = null;
+        String authorization = authorization();
+        String agreementId = "CBJCHBCAABAAtQ0uYsCXMcoHHbrgQo-Y_jZqFDpPaUA0";
         String xApiUser = null;
         String xOnBehalfOfUser = null;
         String ifNoneMatch = null;
         Boolean includeNextParticipantSet = null;
         MembersInfo response = api.getAllMembers(authorization, agreementId, xApiUser, xOnBehalfOfUser, ifNoneMatch, includeNextParticipantSet);
 
+        System.out.println(response);
         // TODO: test validations
     }
     
@@ -590,15 +833,18 @@ public class AgreementsApiTest {
      */
     @Test
     public void getFormFieldsTest() throws ApiException {
-        String authorization = null;
-        String agreementId = null;
+        String authorization = authorization();
+        String agreementId = "CBJCHBCAABAADKTIyVmmbaMS3COwbThsfmdpWm-rVb6h";
         String xApiUser = null;
         String xOnBehalfOfUser = null;
         String ifNoneMatch = null;
         String participantEmail = null;
-        AgreementFormFields response = api.getFormFields(authorization, agreementId, xApiUser, xOnBehalfOfUser, ifNoneMatch, participantEmail);
+        ApiResponse<AgreementFormFields> formFieldsWithHttpInfo = api.getFormFieldsWithHttpInfo(authorization, agreementId, xApiUser, xOnBehalfOfUser, ifNoneMatch, participantEmail);
 
         // TODO: test validations
+        Map<String, List<String>> headers = formFieldsWithHttpInfo.getHeaders();
+        System.out.println(formFieldsWithHttpInfo.getData());
+        System.out.println(headers);
     }
     
     /**
@@ -630,14 +876,14 @@ public class AgreementsApiTest {
      */
     @Test
     public void getParticipantSetTest() throws ApiException {
-        String authorization = null;
-        String agreementId = null;
-        String participantSetId = null;
+        String authorization = authorization();
+        String agreementId = "CBJCHBCAABAAQZ5tpscTFzwsNZDrS6Darwrno1C6Hrhz";
+        String participantSetId = "1";
         String xApiUser = null;
         String xOnBehalfOfUser = null;
         String ifNoneMatch = null;
         DetailedParticipantSetInfo response = api.getParticipantSet(authorization, agreementId, participantSetId, xApiUser, xOnBehalfOfUser, ifNoneMatch);
-
+        System.out.println(response);
         // TODO: test validations
     }
     
@@ -797,10 +1043,11 @@ public class AgreementsApiTest {
      */
     @Test
     public void updateAgreementStateTest() throws ApiException {
-        String authorization = null;
-        String ifMatch = null;
-        String agreementId = null;
-        AgreementStateInfo agreementStateInfo = null;
+        String authorization = authorization();
+        String ifMatch = "E3A5DBECAB51C7D8C6FF51EE5AD5CFF5.5334C3A18AB5A054FF3DBC33AFBDF6C";
+        String agreementId = "CBJCHBCAABAA28fNen6SIGnysnm2IV_SpO18n_7rGOZE";
+        AgreementStateInfo agreementStateInfo = new AgreementStateInfo();
+        agreementStateInfo.setState(AgreementStateInfo.StateEnum.AUTHORING);
         String xApiUser = null;
         String xOnBehalfOfUser = null;
         api.updateAgreementState(authorization, ifMatch, agreementId, agreementStateInfo, xApiUser, xOnBehalfOfUser);
@@ -838,13 +1085,29 @@ public class AgreementsApiTest {
      */
     @Test
     public void updateFormFieldsTest() throws ApiException {
-        String authorization = null;
-        String ifMatch = null;
-        String agreementId = null;
-        FormFieldPutInfo formFieldPutInfo = null;
+        String ifMatch = "B518D931382EC9556F32EFED4232DB.5334C3A18AB5A054FF3DBC33AFBDF6C";
+        String agreementId = "CBJCHBCAABAA28fNen6SIGnysnm2IV_SpO18n_7rGOZE";
+        FormFieldPutInfo formFieldPutInfo = new FormFieldPutInfo();
         String xApiUser = null;
         String xOnBehalfOfUser = null;
-        AgreementFormFields response = api.updateFormFields(authorization, ifMatch, agreementId, formFieldPutInfo, xApiUser, xOnBehalfOfUser);
+
+
+        for (int i = 0; i < 2; i++) {
+            FormField formField = new FormField();
+            formField.setAlignment(FormField.AlignmentEnum.CENTER);
+            formField.setName(String.valueOf(i));
+            FormFieldLocation formFieldLocation = new FormFieldLocation();
+            formFieldLocation.setHeight(100D);
+            formFieldLocation.setWidth(100D);
+            formFieldLocation.setTop(1d);
+            formFieldLocation.setLeft(1d);
+            formFieldLocation.setPageNumber(i + 1);
+            formField.addLocationsItem(formFieldLocation);
+
+            formFieldPutInfo.addFieldsItem(formField);
+        }
+
+        AgreementFormFields response = api.updateFormFields(authorization(), ifMatch, agreementId, formFieldPutInfo, xApiUser, xOnBehalfOfUser);
 
         // TODO: test validations
     }
@@ -870,5 +1133,6 @@ public class AgreementsApiTest {
 
         // TODO: test validations
     }
+
     
 }

@@ -2,6 +2,7 @@ package io.swagger.client.model.agreements;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -38,6 +39,14 @@ public class FormFieldGenerator {
 
     public void setFormFieldDescription(List<FormField> formFieldDescription) {
         this.formFieldDescription = formFieldDescription;
+    }
+
+    public FormFieldGenerator addFormFieldDescription(FormField formField) {
+        if (this.formFieldDescription == null) {
+            this.formFieldDescription = new ArrayList<FormField>();
+        }
+        this.formFieldDescription.add(formField);
+        return this;
     }
 
     public String getFormFieldNamePrefix() {

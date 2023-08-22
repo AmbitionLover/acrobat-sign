@@ -924,7 +924,7 @@ public class ApiClient {
                     throw new ApiException(response.message(), e, response.code(), response.headers().toMultimap());
                 }
             }
-            throw new ApiException(response.message(), response.code(), response.headers().toMultimap(), respBody);
+            throw new ApiException(respBody == null ? response.message() : respBody, response.code(), response.headers().toMultimap(), respBody);
         }
     }
 

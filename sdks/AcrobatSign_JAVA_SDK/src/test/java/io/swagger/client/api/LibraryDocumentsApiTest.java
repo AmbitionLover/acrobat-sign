@@ -28,22 +28,21 @@
 
 package io.swagger.client.api;
 
+import io.swagger.client.model.ApiClient;
 import io.swagger.client.model.ApiException;
-import io.swagger.client.model.libraryDocuments.DocumentImageUrlsInfo;
-import io.swagger.client.model.libraryDocuments.Documents;
-import io.swagger.client.model.libraryDocuments.LibraryDocumentCreationInfoV6;
-import io.swagger.client.model.libraryDocuments.LibraryDocumentCreationResponse;
-import io.swagger.client.model.libraryDocuments.LibraryDocumentEventList;
-import io.swagger.client.model.libraryDocuments.LibraryDocumentInfo;
-import io.swagger.client.model.libraryDocuments.LibraryDocumentStateInfo;
-import io.swagger.client.model.libraryDocuments.LibraryDocumentViewResponse;
-import io.swagger.client.model.libraryDocuments.LibraryDocuments;
-import io.swagger.client.model.libraryDocuments.LibraryViewInfo;
-import io.swagger.client.model.libraryDocuments.Note;
-import io.swagger.client.model.libraryDocuments.VisibilityInfo;
+import io.swagger.client.model.ApiResponse;
+import io.swagger.client.model.Configuration;
+import io.swagger.client.model.agreements.AgreementFormFields;
+import io.swagger.client.model.agreements.FormField;
+import io.swagger.client.model.agreements.FormFieldLocation;
+import io.swagger.client.model.agreements.FormFieldPutInfo;
+import io.swagger.client.model.libraryDocuments.*;
+import io.swagger.client.model.transientDocuments.TransientDocumentResponse;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.Ignore;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,6 +56,31 @@ public class LibraryDocumentsApiTest {
 
     private final LibraryDocumentsApi api = new LibraryDocumentsApi();
 
+    String mimeType = "application/pdf";
+    public final static String baseUrl = "https://api.na4.adobesign.com:443/";
+    public final static String endpointUrl = "api/rest/v6";
+
+    public String authorization() {
+        return "Bearer 3AAABLblqZhATbP6UCE7nhcSbYFrMr3qDIgOPWn1JVzyOhCurpwFrN3PkfjKbqdYNBA0GI7-PH1IvOAxbCZOeO2JurGJkBV_e";
+    }
+
+    public String elag(ApiResponse<?> apiResponse) {
+        Map<String, List<String>> headers = apiResponse.getHeaders();
+        List<String> strings = headers.get("ETag");
+        return strings.get(0);
+    }
+
+    @Before
+    public void init() throws ApiException {
+        ApiClient apiClient = new ApiClient();
+        apiClient.setBasePath(baseUrl + endpointUrl);
+        Configuration.setDefaultApiClient(apiClient);
+//        BaseUrisApi baseUrisApi = new BaseUrisApi();
+//        BaseUriInfo baseUriInfo = baseUrisApi.getBaseUris(authorization());
+//        apiClient.setBasePath(baseUriInfo.getApiAccessPoint() + endpointUrl);
+        api.setApiClient(apiClient);
+    }
+
     
     /**
      * Creates a template that is placed in the library of the user for reuse.
@@ -69,11 +93,31 @@ public class LibraryDocumentsApiTest {
     @Test
     public void createLibraryDocumentTest() throws ApiException {
         String authorization = null;
-        LibraryDocumentCreationInfoV6 libraryDocumentInfo = null;
+        LibraryDocumentCreationInfoV6 libraryDocumentInfo = new LibraryDocumentCreationInfoV6();
+
+        libraryDocumentInfo.setName("xxx");
+        libraryDocumentInfo.setSharingMode(LibraryDocumentCreationInfoV6.SharingModeEnum.USER);
+        libraryDocumentInfo.setState(LibraryDocumentCreationInfoV6.StateEnum.ACTIVE);
+        libraryDocumentInfo.addTemplateTypesItem(LibraryDocumentCreationInfoV6.TemplateTypesEnum.DOCUMENT);
+
+        TransientDocumentsApi transientDocumentsApi = new TransientDocumentsApi();
+
+        File file = new File("F:\\word\\qiyuesuo\\空白.pdf");
+
+        TransientDocumentResponse transientDocument = transientDocumentsApi.createTransientDocument(authorization(), file,
+                null, null, "", mimeType);
+
+
+        FileInfo fileInfo = new FileInfo();
+        fileInfo.setTransientDocumentId(transientDocument.getTransientDocumentId());
+
+
+        libraryDocumentInfo.addFileInfosItem(fileInfo);
         String xApiUser = null;
         String xOnBehalfOfUser = null;
-        LibraryDocumentCreationResponse response = api.createLibraryDocument(authorization, libraryDocumentInfo, xApiUser, xOnBehalfOfUser);
+        LibraryDocumentCreationResponse response = api.createLibraryDocument(authorization(), libraryDocumentInfo, xApiUser, xOnBehalfOfUser);
 
+        System.out.println(response);
         // TODO: test validations
     }
     
@@ -384,6 +428,43 @@ public class LibraryDocumentsApiTest {
         String xOnBehalfOfUser = null;
         api.updateLibraryDocumentVisibility(authorization, libraryDocumentId, visibilityInfo, xApiUser, xOnBehalfOfUser);
 
+        // TODO: test validations
+    }
+
+    @Test
+    public void updateLibraryFormFieldsTest() throws ApiException {
+        String authorization = authorization();
+        String ifmatch = "2DAA7354EF4F43B379DFD879B873A8B.5334C3A18AB5A054FF3DBC33AFBDF6C";
+        String libraryDocumentId = "CBJCHBCAABAAQvW9x9aJE4Auw0vG5ChbCGzjSMi6zjjI";
+        FormFieldPutInfo formFieldPutInfo = new FormFieldPutInfo();
+        String xApiUser = null;
+        String xOnBehalfOfUser = null;
+
+
+        ApiResponse<AgreementFormFields> formFieldsWithHttpInfo = api.getFormFieldsWithHttpInfo(authorization, libraryDocumentId, xApiUser, xOnBehalfOfUser, null, null);
+        String elag = elag(formFieldsWithHttpInfo);
+
+
+
+        for (int i = 1; i <= 2; i++) {
+            FormField formField = new FormField();
+
+            formField.setName("i" + i);
+
+            FormFieldLocation formFieldLocation = new FormFieldLocation();
+            formFieldLocation.setPageNumber(i);
+            formFieldLocation.setLeft(50D * i);
+            formFieldLocation.setTop(50D * i);
+            formFieldLocation.setWidth(50D * i);
+            formFieldLocation.setHeight(50D * i);
+
+            formField.addLocationsItem(formFieldLocation);
+            formFieldPutInfo.addFieldsItem(formField);
+        }
+
+        AgreementFormFields agreementFormFields = api.updateFormFields(authorization, null, libraryDocumentId, formFieldPutInfo, xApiUser, xOnBehalfOfUser);
+
+        System.out.println(agreementFormFields);
         // TODO: test validations
     }
     

@@ -367,6 +367,9 @@ public class AgreementCreationInfo {
   @SerializedName("workflowId")
   private String workflowId = null;
 
+  @SerializedName("FormFieldGenerator")
+  private FormFieldGenerator FormFieldGenerator;
+
   public AgreementCreationInfo ccs(List<AgreementCcInfo> ccs) {
     this.ccs = ccs;
     return this;
@@ -857,6 +860,13 @@ public class AgreementCreationInfo {
     this.workflowId = workflowId;
   }
 
+  public FormFieldGenerator getFormFieldGenerator() {
+    return FormFieldGenerator;
+  }
+
+  public void setFormFieldGenerator(FormFieldGenerator formFieldGenerator) {
+    FormFieldGenerator = formFieldGenerator;
+  }
 
   @Override
   public boolean equals(java.lang.Object o) {
